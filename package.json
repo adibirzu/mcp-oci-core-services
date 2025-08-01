@@ -1,0 +1,27 @@
+{
+  "name": "mcp-oci-core-services",
+  "version": "1.0.0",
+  "description": "MCP server for OCI Core Services - Compute instance management with LLM-friendly responses",
+  "main": "oci_core_services_server.py",
+  "scripts": {
+    "start": "./run_core_services_server.sh",
+    "test": "python3 test_core_services.py",
+    "demo": "python3 demo_core_services.py"
+  },
+  "keywords": [
+    "mcp",
+    "oci",
+    "oracle-cloud",
+    "compute",
+    "instances",
+    "fastmcp",
+    "core-services",
+    "llm-friendly"
+  ],
+  "author": "AI Assistant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/mcp-oci-core-services"
+  }
+}
