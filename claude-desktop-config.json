@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "oci-core-services": {
+      "command": "/Users/abirzu/.pyenv/versions/3.11.9/bin/python",
+      "args": [
+        "/Users/abirzu/dev/mcp-oci-core-services/oci_core_services_server.py"
+      ],
+      "env": {
+        "OCI_COMPARTMENT_ID": "your_compartment_ocid_here",
+        "SUPPRESS_LABEL_WARNING": "True"
+      }
+    }
+  }
+}
