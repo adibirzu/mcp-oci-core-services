@@ -45,8 +45,8 @@ except ImportError as e:
     print("Install with: pip install fastmcp")
     sys.exit(1)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configure logging - disable for MCP protocol compatibility
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
@@ -74,9 +74,8 @@ class OCICoreServicesManager:
             self.network_client = VirtualNetworkClient(self.config)
             self.database_client = DatabaseClient(self.config)
             
-            logger.info("✅ OCI Core Services clients initialized successfully")
-            logger.info(f"Region: {self.config.get('region', 'Not specified')}")
-            logger.info(f"Tenancy: {self.config.get('tenancy', 'Not specified')[:20]}...")
+            # Initialization successful (logging disabled for MCP compatibility)
+            pass
             
         except Exception as e:
             logger.error(f"❌ Failed to initialize OCI SDK clients: {e}")
@@ -1168,42 +1167,5 @@ async def test_core_services_connection() -> Dict[str, Any]:
         }
 
 if __name__ == "__main__":
-    # Print startup information
-    print("🚀 Starting OCI Core Services FastMCP Server...", file=sys.stderr)
-    print("📋 Available tools:", file=sys.stderr)
-    print("   📊 Instance Information:", file=sys.stderr)
-    print("     - list_compute_instances: List instances with basic details", file=sys.stderr)
-    print("     - get_instance_details: Get comprehensive instance information", file=sys.stderr)
-    print("     - list_instances_with_network: List instances with network details", file=sys.stderr)
-    print("     - get_compute_instance_state: Get current instance lifecycle state", file=sys.stderr)
-    print("   ⚡ Instance Lifecycle Management:", file=sys.stderr)
-    print("     - start_compute_instance: Start a stopped instance", file=sys.stderr)
-    print("     - stop_compute_instance: Stop a running instance (graceful or forced)", file=sys.stderr)
-    print("     - restart_compute_instance: Restart an instance (graceful or forced)", file=sys.stderr)
-    print("   🗄️ Database Management:", file=sys.stderr)
-    print("     - list_database_systems: List database systems", file=sys.stderr)
-    print("     - start_database_system: Start a stopped database system", file=sys.stderr)
-    print("     - stop_database_system: Stop a running database system", file=sys.stderr)
-    print("     - get_database_system_state: Get current database system state", file=sys.stderr)
-    print("   🔧 Diagnostics:", file=sys.stderr)
-    print("     - test_core_services_connection: Test OCI connectivity", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("⚙️  Configuration:", file=sys.stderr)
-    print(f"   - OCI SDK Available: {'✅' if core_manager.compute_client else '❌'}", file=sys.stderr)
-    print(f"   - Network Client: {'✅' if core_manager.network_client else '❌'}", file=sys.stderr)
-    print(f"   - Database Client: {'✅' if core_manager.database_client else '❌'}", file=sys.stderr)
-    print(f"   - Region: {core_manager.config.get('region', 'Not configured') if core_manager.config else 'Not configured'}", file=sys.stderr)
-    print(f"   - Compartment ID: {core_manager.get_compartment_id() or '❌ Not set'}", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("💡 Lifecycle Actions:", file=sys.stderr)
-    print("   Instance Actions:", file=sys.stderr)
-    print("     - START: Power on a stopped instance", file=sys.stderr)
-    print("     - STOP/SOFTSTOP: Power off a running instance", file=sys.stderr)
-    print("     - RESET/SOFTRESET: Restart an instance", file=sys.stderr)
-    print("   Database Actions:", file=sys.stderr)
-    print("     - START: Power on a stopped database system", file=sys.stderr)
-    print("     - STOP: Power off a running database system", file=sys.stderr)
-    print("", file=sys.stderr)
-    
-    # Run the FastMCP server
+    # Run the FastMCP server (startup info disabled for MCP protocol compatibility)
     mcp.run()
