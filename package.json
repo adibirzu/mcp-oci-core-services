@@ -19,7 +19,7 @@
     "llm-friendly"
   ],
   "author": "AI Assistant",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/your-org/mcp-oci-core-services"
