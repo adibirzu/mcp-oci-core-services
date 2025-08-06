@@ -2,7 +2,7 @@
 
 ## ✅ Server Successfully Moved and Configured
 
-The OCI Core Services MCP Server has been moved to its own dedicated folder and configured for Claude Desktop integration.
+The production-ready OCI Core Services MCP Server (15 specialized tools) has been moved to its own dedicated folder and configured for Claude Desktop integration.
 
 ### 📁 New Location
 ```

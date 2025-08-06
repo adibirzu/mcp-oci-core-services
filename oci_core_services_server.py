@@ -5,8 +5,12 @@ OCI Core Services FastMCP Server
 A dedicated FastMCP server for Oracle Cloud Infrastructure Core Services including:
 - Compute instance management and listing
 - Network interface (VNIC) information
-- Instance lifecycle operations
+- Instance lifecycle operations (start, stop, restart)
 - Detailed instance configurations
+- Database system management (regular DB systems)
+- Autonomous Database management and operations
+- Autonomous Database scaling and lifecycle operations
+- Connection testing and service validation
 
 Uses official OCI Python SDK with CLI fallback for maximum compatibility.
 Returns LLM-friendly JSON responses with human-readable summaries.
@@ -15,7 +19,7 @@ Prerequisites:
 - OCI CLI installed and configured
 - OCI config file at ~/.oci/config
 - OCI Python SDK installed
-- Appropriate OCI permissions for core services
+- Appropriate OCI permissions for core services (compute, database, networking)
 """
 
 import os
@@ -416,6 +420,316 @@ class OCICoreServicesManager:
             
         except Exception as e:
             logger.error(f"Failed to get database system state: {e}")
+            raise
+    
+    async def list_autonomous_databases_sdk(self, compartment_id: str, lifecycle_state: str = None, db_workload: str = None) -> List[Dict]:
+        """List autonomous databases using OCI Python SDK"""
+        if not self.database_client:
+            raise Exception("OCI Database SDK not available")
+        
+        try:
+            logger.info(f"Listing autonomous databases - Compartment: {compartment_id}, State: {lifecycle_state or 'ALL'}, Workload: {db_workload or 'ALL'}")
+            
+            # Build parameters
+            list_params = {'compartment_id': compartment_id}
+            if lifecycle_state:
+                list_params['lifecycle_state'] = lifecycle_state
+            if db_workload:
+                list_params['db_workload'] = db_workload
+                
+            response = self.database_client.list_autonomous_databases(**list_params)
+            
+            autonomous_dbs = []
+            for adb in response.data:
+                adb_data = {
+                    'id': adb.id,
+                    'display_name': adb.display_name,
+                    'db_name': adb.db_name,
+                    'lifecycle_state': adb.lifecycle_state,
+                    'lifecycle_details': adb.lifecycle_details,
+                    'db_workload': adb.db_workload,
+                    'db_version': adb.db_version,
+                    'compute_model': adb.compute_model,
+                    'compute_count': adb.compute_count,
+                    'cpu_core_count': adb.cpu_core_count,
+                    'data_storage_size_in_tbs': adb.data_storage_size_in_tbs,
+                    'data_storage_size_in_gbs': adb.data_storage_size_in_gbs,
+                    'is_auto_scaling_enabled': adb.is_auto_scaling_enabled,
+                    'is_auto_scaling_for_storage_enabled': adb.is_auto_scaling_for_storage_enabled,
+                    'is_free_tier': adb.is_free_tier,
+                    'license_model': adb.license_model,
+                    'whitelisted_ips': adb.whitelisted_ips or [],
+                    'time_created': adb.time_created.isoformat() if adb.time_created else None,
+                    'compartment_id': adb.compartment_id,
+                    'connection_urls': {
+                        'sql_dev_web_url': adb.connection_urls.sql_dev_web_url if adb.connection_urls else None,
+                        'apex_url': adb.connection_urls.apex_url if adb.connection_urls else None,
+                        'graph_studio_url': adb.connection_urls.graph_studio_url if adb.connection_urls else None,
+                        'mongo_db_url': adb.connection_urls.mongo_db_url if adb.connection_urls else None,
+                        'ords_url': adb.connection_urls.ords_url if adb.connection_urls else None
+                    } if adb.connection_urls else {},
+                    'service_console_url': adb.service_console_url,
+                    'is_refreshable_clone': adb.is_refreshable_clone,
+                    'refreshable_status': adb.refreshable_status,
+                    'refreshable_mode': adb.refreshable_mode,
+                    'time_of_last_refresh': adb.time_of_last_refresh.isoformat() if adb.time_of_last_refresh else None,
+                    'tags': {
+                        'freeform': adb.freeform_tags or {},
+                        'defined': adb.defined_tags or {}
+                    }
+                }
+                autonomous_dbs.append(adb_data)
+            
+            logger.info(f"✅ Found {len(autonomous_dbs)} autonomous databases via SDK")
+            return autonomous_dbs
+            
+        except Exception as e:
+            logger.error(f"Autonomous Database SDK failed: {e}")
+            raise
+    
+    async def get_autonomous_database_details_sdk(self, autonomous_database_id: str) -> Dict:
+        """Get detailed autonomous database information using OCI Python SDK"""
+        if not self.database_client:
+            raise Exception("OCI Database SDK not available")
+        
+        try:
+            logger.info(f"Getting autonomous database details via SDK: {autonomous_database_id}")
+            
+            response = self.database_client.get_autonomous_database(autonomous_database_id=autonomous_database_id)
+            adb = response.data
+            
+            adb_details = {
+                'id': adb.id,
+                'display_name': adb.display_name,
+                'db_name': adb.db_name,
+                'lifecycle_state': adb.lifecycle_state,
+                'lifecycle_details': adb.lifecycle_details,
+                'db_workload': adb.db_workload,
+                'db_version': adb.db_version,
+                'character_set': adb.character_set,
+                'ncharacter_set': adb.ncharacter_set,
+                
+                # Compute and storage
+                'compute_model': adb.compute_model,
+                'compute_count': adb.compute_count,
+                'cpu_core_count': adb.cpu_core_count,
+                'data_storage_size_in_tbs': adb.data_storage_size_in_tbs,
+                'data_storage_size_in_gbs': adb.data_storage_size_in_gbs,
+                'provisionable_cpus': adb.provisionable_cpus or [],
+                
+                # Features and configuration
+                'is_auto_scaling_enabled': adb.is_auto_scaling_enabled,
+                'is_auto_scaling_for_storage_enabled': adb.is_auto_scaling_for_storage_enabled,
+                'is_free_tier': adb.is_free_tier,
+                'license_model': adb.license_model,
+                'whitelisted_ips': adb.whitelisted_ips or [],
+                'are_primary_whitelisted_ips_used': adb.are_primary_whitelisted_ips_used,
+                
+                # Connectivity
+                'connection_strings': adb.connection_strings.__dict__ if adb.connection_strings else {},
+                'connection_urls': adb.connection_urls.__dict__ if adb.connection_urls else {},
+                'service_console_url': adb.service_console_url,
+                
+                # Timing information
+                'time_created': adb.time_created.isoformat() if adb.time_created else None,
+                'time_maintenance_begin': adb.time_maintenance_begin.isoformat() if adb.time_maintenance_begin else None,
+                'time_maintenance_end': adb.time_maintenance_end.isoformat() if adb.time_maintenance_end else None,
+                'time_deletion_of_free_autonomous_database': adb.time_deletion_of_free_autonomous_database.isoformat() if adb.time_deletion_of_free_autonomous_database else None,
+                
+                # Security
+                'vault_id': adb.vault_id,
+                'kms_key_id': adb.kms_key_id,
+                'encryption_key': adb.encryption_key.__dict__ if adb.encryption_key else {},
+                
+                # Backup and DR
+                'backup_retention_period_in_days': adb.backup_retention_period_in_days,
+                'backup_config': adb.backup_config.__dict__ if adb.backup_config else {},
+                'disaster_recovery_region_type': adb.disaster_recovery_region_type,
+                'standby_lag_time_in_seconds': adb.standby_lag_time_in_seconds,
+                'role': adb.role,
+                'dataguard_region_type': adb.dataguard_region_type,
+                'peer_db_ids': adb.peer_db_ids or [],
+                
+                # Clone information
+                'is_refreshable_clone': adb.is_refreshable_clone,
+                'refreshable_status': adb.refreshable_status,
+                'refreshable_mode': adb.refreshable_mode,
+                'time_of_last_refresh': adb.time_of_last_refresh.isoformat() if adb.time_of_last_refresh else None,
+                'time_of_last_refresh_point': adb.time_of_last_refresh_point.isoformat() if adb.time_of_last_refresh_point else None,
+                'time_of_next_refresh': adb.time_of_next_refresh.isoformat() if adb.time_of_next_refresh else None,
+                
+                # Advanced features
+                'supported_regions_to_clone_to': adb.supported_regions_to_clone_to or [],
+                'customer_contacts': [contact.__dict__ for contact in adb.customer_contacts] if adb.customer_contacts else [],
+                
+                # Metadata
+                'compartment_id': adb.compartment_id,
+                'tags': {
+                    'freeform': adb.freeform_tags or {},
+                    'defined': adb.defined_tags or {},
+                    'system': adb.system_tags or {}
+                }
+            }
+            
+            logger.info(f"✅ Retrieved autonomous database details via SDK")
+            return adb_details
+            
+        except Exception as e:
+            logger.error(f"Autonomous Database details SDK failed: {e}")
+            raise
+    
+    async def autonomous_database_action_sdk(self, autonomous_database_id: str, action: str) -> Dict:
+        """Perform autonomous database lifecycle action using OCI Python SDK"""
+        if not self.database_client:
+            raise Exception("OCI Database SDK not available")
+        
+        valid_actions = ["START", "STOP", "RESTART"]
+        if action.upper() not in valid_actions:
+            raise Exception(f"Invalid autonomous database action '{action}'. Valid actions: {', '.join(valid_actions)}")
+        
+        try:
+            logger.info(f"Performing {action} action on autonomous database {autonomous_database_id}")
+            
+            # Get current autonomous database details first
+            adb_response = self.database_client.get_autonomous_database(autonomous_database_id=autonomous_database_id)
+            adb = adb_response.data
+            current_state = adb.lifecycle_state
+            
+            logger.info(f"Autonomous database '{adb.display_name}' current state: {current_state}")
+            
+            # Perform the action
+            if action.upper() == "START":
+                response = self.database_client.start_autonomous_database(autonomous_database_id=autonomous_database_id)
+            elif action.upper() == "STOP":
+                response = self.database_client.stop_autonomous_database(autonomous_database_id=autonomous_database_id)
+            elif action.upper() == "RESTART":
+                response = self.database_client.restart_autonomous_database(autonomous_database_id=autonomous_database_id)
+            
+            # Get work request information
+            work_request_id = response.headers.get('opc-work-request-id')
+            if work_request_id:
+                logger.info(f"Autonomous database action initiated with work request ID: {work_request_id}")
+            
+            action_result = {
+                'autonomous_database_id': autonomous_database_id,
+                'database_name': adb.display_name,
+                'db_name': adb.db_name,
+                'action': action.upper(),
+                'previous_state': current_state,
+                'work_request_id': work_request_id,
+                'request_id': response.headers.get('opc-request-id'),
+                'initiated_at': datetime.utcnow().isoformat() + "Z"
+            }
+            
+            logger.info(f"✅ Autonomous database {action} action initiated successfully")
+            return action_result
+            
+        except Exception as e:
+            logger.error(f"Autonomous database action failed: {e}")
+            raise
+    
+    async def scale_autonomous_database_sdk(self, autonomous_database_id: str, **scale_params) -> Dict:
+        """Scale autonomous database compute and storage using OCI Python SDK"""
+        if not self.database_client:
+            raise Exception("OCI Database SDK not available")
+        
+        try:
+            # Get current autonomous database details
+            adb_response = self.database_client.get_autonomous_database(autonomous_database_id=autonomous_database_id)
+            adb = adb_response.data
+            
+            # Import the model class here to avoid import issues
+            from oci.database.models import UpdateAutonomousDatabaseDetails
+            
+            # Build update details
+            update_details = UpdateAutonomousDatabaseDetails()
+            
+            changes = []
+            if 'compute_count' in scale_params and scale_params['compute_count'] is not None:
+                update_details.compute_count = scale_params['compute_count']
+                changes.append(f"ECPU: {scale_params['compute_count']}")
+            
+            if 'cpu_core_count' in scale_params and scale_params['cpu_core_count'] is not None:
+                update_details.cpu_core_count = scale_params['cpu_core_count']
+                changes.append(f"OCPU: {scale_params['cpu_core_count']}")
+            
+            if 'data_storage_size_in_tbs' in scale_params and scale_params['data_storage_size_in_tbs'] is not None:
+                update_details.data_storage_size_in_tbs = scale_params['data_storage_size_in_tbs']
+                changes.append(f"Storage: {scale_params['data_storage_size_in_tbs']}TB")
+            
+            if 'is_auto_scaling_enabled' in scale_params and scale_params['is_auto_scaling_enabled'] is not None:
+                update_details.is_auto_scaling_enabled = scale_params['is_auto_scaling_enabled']
+                changes.append(f"Auto-scaling: {'enabled' if scale_params['is_auto_scaling_enabled'] else 'disabled'}")
+            
+            if 'is_auto_scaling_for_storage_enabled' in scale_params and scale_params['is_auto_scaling_for_storage_enabled'] is not None:
+                update_details.is_auto_scaling_for_storage_enabled = scale_params['is_auto_scaling_for_storage_enabled']
+                changes.append(f"Storage auto-scaling: {'enabled' if scale_params['is_auto_scaling_for_storage_enabled'] else 'disabled'}")
+            
+            if not changes:
+                raise Exception("No scaling parameters provided")
+            
+            logger.info(f"Scaling autonomous database {autonomous_database_id}: {', '.join(changes)}")
+            
+            # Perform the update
+            response = self.database_client.update_autonomous_database(
+                autonomous_database_id=autonomous_database_id,
+                update_autonomous_database_details=update_details
+            )
+            
+            # Get work request information
+            work_request_id = response.headers.get('opc-work-request-id')
+            if work_request_id:
+                logger.info(f"Autonomous database scaling initiated with work request ID: {work_request_id}")
+            
+            action_result = {
+                'autonomous_database_id': autonomous_database_id,
+                'database_name': adb.display_name,
+                'db_name': adb.db_name,
+                'action': 'SCALE',
+                'changes': changes,
+                'work_request_id': work_request_id,
+                'request_id': response.headers.get('opc-request-id'),
+                'initiated_at': datetime.utcnow().isoformat() + "Z"
+            }
+            
+            logger.info(f"✅ Autonomous database scaling action initiated successfully")
+            return action_result
+            
+        except Exception as e:
+            logger.error(f"Autonomous database scaling failed: {e}")
+            raise
+    
+    async def get_autonomous_database_state_sdk(self, autonomous_database_id: str) -> Dict:
+        """Get current state of an autonomous database using OCI Python SDK"""
+        if not self.database_client:
+            raise Exception("OCI Database SDK not available")
+        
+        try:
+            response = self.database_client.get_autonomous_database(autonomous_database_id=autonomous_database_id)
+            adb = response.data
+            
+            state_info = {
+                'autonomous_database_id': autonomous_database_id,
+                'database_name': adb.display_name,
+                'db_name': adb.db_name,
+                'lifecycle_state': adb.lifecycle_state,
+                'lifecycle_details': adb.lifecycle_details,
+                'db_workload': adb.db_workload,
+                'compute_model': adb.compute_model,
+                'compute_count': adb.compute_count,
+                'cpu_core_count': adb.cpu_core_count,
+                'data_storage_size_in_tbs': adb.data_storage_size_in_tbs,
+                'is_auto_scaling_enabled': adb.is_auto_scaling_enabled,
+                'is_free_tier': adb.is_free_tier,
+                'compartment_id': adb.compartment_id,
+                'time_created': adb.time_created.isoformat() if adb.time_created else None,
+                'retrieved_at': datetime.utcnow().isoformat() + "Z"
+            }
+            
+            return state_info
+            
+        except Exception as e:
+            logger.error(f"Failed to get autonomous database state: {e}")
             raise
     
     async def list_instances_cli_fallback(self, compartment_id: str, lifecycle_state: str = "RUNNING") -> List[Dict]:
@@ -1052,6 +1366,365 @@ async def get_database_system_state(db_system_id: str) -> Dict[str, Any]:
         }
 
 @mcp.tool()
+async def list_autonomous_databases(compartment_id: str = None, lifecycle_state: str = None, db_workload: str = None) -> Dict[str, Any]:
+    """
+    List autonomous databases in the compartment.
+    
+    Args:
+        compartment_id: OCI compartment ID (uses default if not provided)
+        lifecycle_state: Filter by lifecycle state (AVAILABLE, STOPPED, etc.)
+        db_workload: Filter by workload type (OLTP, DW, AJD, APEX)
+    
+    Returns:
+        LLM-friendly JSON with autonomous databases list
+    """
+    try:
+        target_compartment = compartment_id or core_manager.get_compartment_id()
+        if not target_compartment:
+            raise Exception("Compartment ID is required")
+        
+        if core_manager.database_client:
+            autonomous_dbs = await core_manager.list_autonomous_databases_sdk(target_compartment, lifecycle_state, db_workload)
+            method = "OCI Python SDK"
+        else:
+            raise Exception("Autonomous database listing requires OCI SDK")
+        
+        # Create LLM-friendly response
+        filters_desc = []
+        if lifecycle_state:
+            filters_desc.append(f"state: {lifecycle_state}")
+        if db_workload:
+            filters_desc.append(f"workload: {db_workload}")
+        
+        filter_text = f" ({', '.join(filters_desc)})" if filters_desc else ""
+        summary = f"Found {len(autonomous_dbs)} autonomous databases{filter_text} in {core_manager.config.get('region', 'unknown region') if core_manager.config else 'unknown region'}"
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "count": len(autonomous_dbs),
+            "method": method,
+            "filters": {
+                "compartment_id": target_compartment,
+                "lifecycle_state": lifecycle_state,
+                "db_workload": db_workload
+            },
+            "autonomous_databases": autonomous_dbs,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error listing autonomous databases: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to list autonomous databases: {str(e)}",
+            "count": 0,
+            "method": "Error",
+            "autonomous_databases": [],
+            "error": str(e),
+            "retrieved_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
+async def get_autonomous_database_details(autonomous_database_id: str) -> Dict[str, Any]:
+    """
+    Get detailed information about a specific autonomous database.
+    
+    Args:
+        autonomous_database_id: Autonomous Database OCID
+    
+    Returns:
+        LLM-friendly JSON with comprehensive autonomous database details
+    """
+    try:
+        if core_manager.database_client:
+            adb_details = await core_manager.get_autonomous_database_details_sdk(autonomous_database_id)
+            method = "OCI Python SDK"
+        else:
+            raise Exception("Autonomous database details require OCI SDK")
+        
+        # Create LLM-friendly response
+        workload_names = {
+            'OLTP': 'Transaction Processing',
+            'DW': 'Data Warehouse',
+            'AJD': 'JSON Database',
+            'APEX': 'APEX Application Development'
+        }
+        workload_desc = workload_names.get(adb_details['db_workload'], adb_details['db_workload'])
+        
+        compute_desc = f"{adb_details['compute_count']} ECPUs" if adb_details['compute_model'] == 'ECPU' else f"{adb_details['cpu_core_count']} OCPUs"
+        
+        summary = f"Autonomous Database '{adb_details['display_name']}' ({workload_desc}) is {adb_details['lifecycle_state'].lower()} with {compute_desc} and {adb_details['data_storage_size_in_tbs']}TB storage"
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "method": method,
+            "autonomous_database": adb_details,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error getting autonomous database details: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to get autonomous database details: {str(e)}",
+            "method": "Error",
+            "autonomous_database": {},
+            "error": str(e),
+            "retrieved_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
+async def start_autonomous_database(autonomous_database_id: str) -> Dict[str, Any]:
+    """
+    Start a stopped autonomous database.
+    
+    Args:
+        autonomous_database_id: Autonomous Database OCID
+    
+    Returns:
+        LLM-friendly JSON with action result and status
+    """
+    try:
+        if core_manager.database_client:
+            action_result = await core_manager.autonomous_database_action_sdk(autonomous_database_id, "START")
+            method = "OCI Python SDK"
+            
+            summary = f"Start action initiated for autonomous database '{action_result['database_name']}' (was {action_result['previous_state']})"
+            if action_result['work_request_id']:
+                summary += f" - Work Request: {action_result['work_request_id']}"
+        else:
+            raise Exception("Autonomous database lifecycle actions require OCI SDK")
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "method": method,
+            "action_details": action_result,
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error starting autonomous database: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to start autonomous database: {str(e)}",
+            "method": "Error",
+            "action_details": {},
+            "error": str(e),
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
+async def stop_autonomous_database(autonomous_database_id: str) -> Dict[str, Any]:
+    """
+    Stop a running autonomous database.
+    
+    Args:
+        autonomous_database_id: Autonomous Database OCID
+    
+    Returns:
+        LLM-friendly JSON with action result and status
+    """
+    try:
+        if core_manager.database_client:
+            action_result = await core_manager.autonomous_database_action_sdk(autonomous_database_id, "STOP")
+            method = "OCI Python SDK"
+            
+            summary = f"Stop action initiated for autonomous database '{action_result['database_name']}' (was {action_result['previous_state']})"
+            if action_result['work_request_id']:
+                summary += f" - Work Request: {action_result['work_request_id']}"
+        else:
+            raise Exception("Autonomous database lifecycle actions require OCI SDK")
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "method": method,
+            "action_details": action_result,
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error stopping autonomous database: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to stop autonomous database: {str(e)}",
+            "method": "Error",
+            "action_details": {},
+            "error": str(e),
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
+async def restart_autonomous_database(autonomous_database_id: str) -> Dict[str, Any]:
+    """
+    Restart an autonomous database.
+    
+    Args:
+        autonomous_database_id: Autonomous Database OCID
+    
+    Returns:
+        LLM-friendly JSON with action result and status
+    """
+    try:
+        if core_manager.database_client:
+            action_result = await core_manager.autonomous_database_action_sdk(autonomous_database_id, "RESTART")
+            method = "OCI Python SDK"
+            
+            summary = f"Restart action initiated for autonomous database '{action_result['database_name']}' (was {action_result['previous_state']})"
+            if action_result['work_request_id']:
+                summary += f" - Work Request: {action_result['work_request_id']}"
+        else:
+            raise Exception("Autonomous database lifecycle actions require OCI SDK")
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "method": method,
+            "action_details": action_result,
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error restarting autonomous database: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to restart autonomous database: {str(e)}",
+            "method": "Error",
+            "action_details": {},
+            "error": str(e),
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
+async def scale_autonomous_database(
+    autonomous_database_id: str, 
+    compute_count: float = None, 
+    cpu_core_count: int = None, 
+    data_storage_size_in_tbs: int = None,
+    is_auto_scaling_enabled: bool = None,
+    is_auto_scaling_for_storage_enabled: bool = None
+) -> Dict[str, Any]:
+    """
+    Scale compute and storage for an autonomous database.
+    
+    Args:
+        autonomous_database_id: Autonomous Database OCID
+        compute_count: ECPU count (for ECPU model, recommended)
+        cpu_core_count: CPU core count (for OCPU model, legacy)
+        data_storage_size_in_tbs: Storage size in TB
+        is_auto_scaling_enabled: Enable/disable auto-scaling for compute
+        is_auto_scaling_for_storage_enabled: Enable/disable auto-scaling for storage
+    
+    Returns:
+        LLM-friendly JSON with scaling action result
+    """
+    try:
+        if core_manager.database_client:
+            scale_params = {}
+            if compute_count is not None:
+                scale_params['compute_count'] = compute_count
+            if cpu_core_count is not None:
+                scale_params['cpu_core_count'] = cpu_core_count
+            if data_storage_size_in_tbs is not None:
+                scale_params['data_storage_size_in_tbs'] = data_storage_size_in_tbs
+            if is_auto_scaling_enabled is not None:
+                scale_params['is_auto_scaling_enabled'] = is_auto_scaling_enabled
+            if is_auto_scaling_for_storage_enabled is not None:
+                scale_params['is_auto_scaling_for_storage_enabled'] = is_auto_scaling_for_storage_enabled
+            
+            action_result = await core_manager.scale_autonomous_database_sdk(autonomous_database_id, **scale_params)
+            method = "OCI Python SDK"
+            
+            summary = f"Scaling action initiated for autonomous database '{action_result['database_name']}': {', '.join(action_result['changes'])}"
+            if action_result['work_request_id']:
+                summary += f" - Work Request: {action_result['work_request_id']}"
+        else:
+            raise Exception("Autonomous database scaling requires OCI SDK")
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "method": method,
+            "action_details": action_result,
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error scaling autonomous database: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to scale autonomous database: {str(e)}",
+            "method": "Error",
+            "action_details": {},
+            "error": str(e),
+            "initiated_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
+async def get_autonomous_database_state(autonomous_database_id: str) -> Dict[str, Any]:
+    """
+    Get the current lifecycle state of an autonomous database.
+    
+    Args:
+        autonomous_database_id: Autonomous Database OCID
+    
+    Returns:
+        LLM-friendly JSON with current autonomous database state
+    """
+    try:
+        if core_manager.database_client:
+            state_info = await core_manager.get_autonomous_database_state_sdk(autonomous_database_id)
+            method = "OCI Python SDK"
+            
+            workload_names = {
+                'OLTP': 'Transaction Processing',
+                'DW': 'Data Warehouse', 
+                'AJD': 'JSON Database',
+                'APEX': 'APEX Application Development'
+            }
+            workload_desc = workload_names.get(state_info['db_workload'], state_info['db_workload'])
+            
+            summary = f"Autonomous Database '{state_info['database_name']}' ({workload_desc}) is currently {state_info['lifecycle_state']}"
+        else:
+            raise Exception("Autonomous database state check requires OCI SDK")
+        
+        response = {
+            "success": True,
+            "summary": summary,
+            "method": method,
+            "state_info": state_info,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error getting autonomous database state: {e}")
+        return {
+            "success": False,
+            "summary": f"Failed to get autonomous database state: {str(e)}",
+            "method": "Error",
+            "state_info": {},
+            "error": str(e),
+            "retrieved_at": datetime.utcnow().isoformat() + "Z"
+        }
+
+@mcp.tool()
 async def test_core_services_connection() -> Dict[str, Any]:
     """
     Test connectivity to OCI Core Services and validate configuration.
@@ -1145,6 +1818,33 @@ async def test_core_services_connection() -> Dict[str, Any]:
             results['tests']['database_service'] = {
                 'status': 'failed',
                 'message': 'Database client not available'
+            }
+        
+        # Test autonomous database service
+        if core_manager.database_client:
+            try:
+                compartment_id = core_manager.get_compartment_id()
+                if compartment_id:
+                    autonomous_dbs = await core_manager.list_autonomous_databases_sdk(compartment_id)
+                    results['tests']['autonomous_database_service'] = {
+                        'status': 'success',
+                        'message': f'Autonomous Database service accessible - found {len(autonomous_dbs)} autonomous databases',
+                        'autonomous_db_count': len(autonomous_dbs)
+                    }
+                else:
+                    results['tests']['autonomous_database_service'] = {
+                        'status': 'warning',
+                        'message': 'Autonomous Database client available but no compartment ID configured'
+                    }
+            except Exception as e:
+                results['tests']['autonomous_database_service'] = {
+                    'status': 'failed',
+                    'message': f'Autonomous Database service test failed: {str(e)[:100]}...'
+                }
+        else:
+            results['tests']['autonomous_database_service'] = {
+                'status': 'failed',
+                'message': 'Autonomous Database client not available'
             }
         
         # Overall status

@@ -1,5 +1,7 @@
 # OCI Core Services MCP Server - Installation Guide
 
+> **Production-Ready Server**: 15 specialized tools for OCI compute, database, and network management with LLM-optimized responses
+
 ## 📋 Prerequisites
 
 ### 1. Python Environment
@@ -16,11 +18,32 @@ oci setup config
 ```
 
 ### 3. OCI Permissions
-Ensure your OCI user has the following IAM permissions:
+Ensure your OCI user has the following IAM permissions for full functionality:
+
+**Compute Operations:**
 ```
-ALLOW group <your-group> TO READ instances IN compartment <your-compartment>
+ALLOW group <your-group> TO MANAGE instances IN compartment <your-compartment>
+ALLOW group <your-group> TO READ instance-configurations IN compartment <your-compartment>
+ALLOW group <your-group> TO READ instance-pools IN compartment <your-compartment>
+```
+
+**Database Operations:**
+```
+ALLOW group <your-group> TO MANAGE database-systems IN compartment <your-compartment>
+ALLOW group <your-group> TO MANAGE autonomous-databases IN compartment <your-compartment>
+```
+
+**Network Operations:**
+```
 ALLOW group <your-group> TO READ vnics IN compartment <your-compartment>
 ALLOW group <your-group> TO READ vnic-attachments IN compartment <your-compartment>
+ALLOW group <your-group> TO READ subnets IN compartment <your-compartment>
+ALLOW group <your-group> TO READ network-security-groups IN compartment <your-compartment>
+```
+
+**Work Request Tracking:**
+```
+ALLOW group <your-group> TO READ work-requests IN compartment <your-compartment>
 ```
 
 ## 🚀 Quick Setup
@@ -93,12 +116,34 @@ python3 test_core_services.py
 
 ## 📊 Available Tools
 
-Once configured, Claude will have access to these tools:
+Once configured, Claude will have access to 15 comprehensive OCI management tools:
 
-- **`list_compute_instances`** - List instances with basic details
-- **`get_instance_details`** - Get comprehensive instance information
-- **`list_instances_with_network`** - List instances with network details
-- **`test_core_services_connection`** - Test OCI connectivity
+**Instance Information & Discovery:**
+- **`list_compute_instances`** - List instances with filtering by state and compartment
+- **`get_instance_details`** - Get comprehensive instance information with network details
+- **`list_instances_with_network`** - List instances with complete network information
+- **`get_compute_instance_state`** - Get current lifecycle state of specific instance
+
+**Instance Lifecycle Management:**
+- **`start_compute_instance`** - Start stopped instances with work request tracking
+- **`stop_compute_instance`** - Stop running instances (graceful/forced)
+- **`restart_compute_instance`** - Restart instances (graceful/forced)
+
+**Database Management:**
+- **`list_database_systems`** - List traditional database systems
+- **`start_database_system`** / **`stop_database_system`** - Database lifecycle control
+
+**Autonomous Database Operations:**
+- **`list_autonomous_databases`** - List autonomous databases with workload filtering
+- **`get_autonomous_database_details`** - Get comprehensive autonomous database information
+- **`start_autonomous_database`** / **`stop_autonomous_database`** / **`restart_autonomous_database`** - Full lifecycle control
+- **`scale_autonomous_database`** - Dynamic compute (ECPU/OCPU) and storage scaling
+- **`get_autonomous_database_state`** - Get current autonomous database state
+
+**System Diagnostics:**
+- **`test_core_services_connection`** - Test OCI connectivity and validate configuration
+
+> **Key Features:** LLM-optimized JSON responses, OCI Python SDK primary with CLI fallback, work request tracking, complete type safety
 
 ## 🔍 Troubleshooting
 

@@ -1,5 +1,7 @@
 # Claude Desktop Setup - OCI Core Services MCP Server
 
+> **Production-Ready**: 15 specialized tools for comprehensive OCI compute, database, and network management
+
 ## Quick Setup
 
 1. **Locate your Claude Desktop configuration file**:
@@ -33,7 +35,7 @@
 
 ## Available Tools
 
-The server provides 13 tools for OCI infrastructure management:
+The server provides 15 comprehensive tools for OCI infrastructure management:
 
 ### Instance Management
 - `list_compute_instances` - List running instances
@@ -47,13 +49,21 @@ The server provides 13 tools for OCI infrastructure management:
 - `restart_compute_instance` - Restart an instance (graceful/forced)
 
 ### Database Management
-- `list_database_systems` - List database systems
+- `list_database_systems` - List traditional database systems
 - `start_database_system` - Start a stopped database system
 - `stop_database_system` - Stop a running database system
-- `get_database_system_state` - Get database system state
+
+### Autonomous Database Management
+- `list_autonomous_databases` - List autonomous databases with workload filtering
+- `get_autonomous_database_details` - Get detailed autonomous database information
+- `start_autonomous_database` - Start a stopped autonomous database
+- `stop_autonomous_database` - Stop a running autonomous database
+- `restart_autonomous_database` - Restart an autonomous database
+- `scale_autonomous_database` - Scale compute (ECPU/OCPU) and storage
+- `get_autonomous_database_state` - Get autonomous database state
 
 ### Diagnostics
-- `test_core_services_connection` - Test OCI connectivity
+- `test_core_services_connection` - Test OCI connectivity and validate configuration
 
 ## Example Queries
 
